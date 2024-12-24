@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smolverse3D | Ty</title>
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Quicksand", sans-serif !important;
+            touch-action: none;
+        }
+
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .simulator {
+            width: 100%;
+            height: 100vh;
+            max-height: 96vh;
+            background: #2a2a2a;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            padding: 10px;
+            gap: 10px;
+            position: relative;
+        }
+
+        .viewport-container {
+            position: relative;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        #simulatorCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            touch-action: none;
+        }
+
+        .controls {
+            background: #222;
+            border-radius: 15px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            min-width: 70px;
+        }
+
+        .control-group {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .particle-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .particle-button {
+            padding: 12px;
+            background: #333;
+            border: none;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .particle-button:hover {
+            background: #444;
+        }
+
+        .particle-button:active {
+            transform: scale(0.95);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-button {
+            padding: 9px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #333333;
+            color: white;
+        }
+
+        .action-button:hover {
+            background: #444;
+        }
+
+        .overlay-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .overlay-info.visible {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .simulator {
+                grid-template-columns: 1fr;
+                grid-template-rows: 1fr auto;
+                height: 100vh;
+                max-height: -webkit-fill-available;
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .controls {
+                flex-direction: row;
+                justify-content: space-between;
+                height: auto;
+                padding: 8px;
+                position: fixed;
+                bottom: 0px;
+                left: 10px;
+                right: 10px;
+                z-index: 1000;
+                background: rgba(34, 34, 34, 0.9);
+                backdrop-filter: blur(10px);
+            }
+
+            .control-group {
+                flex: 1;
+                margin: 0 4px;
+                padding: 8px;
+            }
+
+            .particle-controls {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+
+            .action-buttons {
+                flex-direction: row;
+                justify-content: space-around;
+            }
+
+            .particle-button, .action-button {
+                padding: 8px;
+                flex: 1;
+                margin: 0 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="simulator">
+        <div class="viewport-container">
+            <canvas id="simulatorCanvas"></canvas>
+        </div>
+        <div class="controls">
+            <div class="control-group">
+                <div class="particle-controls">
+                    <button class="particle-button" id="addProton">
+                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#fff"><path d="M444-288h72v-156h156v-72H516v-156h-72v156H288v72h156v156Zm36.28 192Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z"/></svg>
+                    </button>
+                    <button class="particle-button" id="addNeutron">
+                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#fff"><path d="M480-240q100 0 170-70t70-170q0-100-70-170t-170-70q-100 0-170 70t-70 170q0 100 70 170t170 70Zm-96-204v-72h192v72H384Zm96.28 348Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z"/></svg>
+                    </button>
+                    <button class="particle-button" id="addElectron">
+                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#fff"><path d="M232-444v-72h496v72H232Z"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="action-buttons">
+                    <button class="action-button" id="toggleAnimation">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                            <path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/>
+                        </svg>
+                    </button>
+                    <button class="action-button" id="clearCanvas">
+                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                            <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="overlay-info">Use LMB/touch to rotate view.<br> Scroll to zoom.<br> Shift+drag/RMB to pan.</div>
+
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('simulatorCanvas'), 
+            antialias: true,
+            alpha: true,
+            precision: 'highp'
+        });
+        
+        const WORLD_SIZE = { width: 1000, height: 1000, depth: 1000 };
+        const particles = [];
+        let isAnimating = true;
+        
+        const particleColors = {
+          proton: 0xb103ff,  
+          neutron: 0x4906ec,   
+          electron: 0xd10376   
+      };
+        
+        let controls;
+        
+        function initRenderer() {
+            const container = document.querySelector('.viewport-container');
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x000000);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            
+            camera.position.set(500, 300, 500);
+            camera.lookAt(WORLD_SIZE.width/2, WORLD_SIZE.height/2, WORLD_SIZE.depth/2);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(WORLD_SIZE.width/2, WORLD_SIZE.height/2, WORLD_SIZE.depth/2);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = true;
+            controls.maxDistance = 1000;
+            controls.minDistance = 100;
+            controls.rotateSpeed = 0.5;
+            
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(1, 1, 1).multiplyScalar(1000);
+            scene.add(light);
+            
+            const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            backLight.position.set(-1, -1, -1).multiplyScalar(1000);
+            scene.add(backLight);
+
+            background = initBackground();
+            
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+        }
+        
+        function initBackground() {
+          const vertexShader = `
+              varying vec2 vUv;
+              void main() {
+                  vUv = uv;
+                  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+          `;
+      
+          const fragmentShader = `
+              varying vec2 vUv;
+              uniform float time;
+              
+              float random(vec2 st) {
+                  return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+              }
+              
+              void main() {
+                  vec2 uv = vUv;
+                  float noise = random(uv + time * 0.05);
+                  
+                  vec3 color1 = vec3(0.05, 0.03, 0.1);
+                  vec3 color2 = vec3(0.1, 0.05, 0.15);
+                  vec3 color3 = vec3(0.02, 0.06, 0.12);
+                  
+                  float blend = noise * 0.15;
+                  vec3 finalColor = mix(color1, color2, blend);
+                  finalColor = mix(finalColor, color3, blend * 0.5);
+                  
+                  float vignette = 1.0 - smoothstep(0.5, 1.5, length(uv - 0.5) * 2.0);
+                  finalColor *= vignette * 1.2;
+                  
+                  gl_FragColor = vec4(finalColor, 1.0);
+              }
+          `;
+      
+          const uniforms = {
+              time: { value: 0 }
+          };
+      
+          const backgroundGeometry = new THREE.PlaneGeometry(2, 2);
+          const backgroundMaterial = new THREE.ShaderMaterial({
+              vertexShader,
+              fragmentShader,
+              uniforms,
+              depthWrite: false,
+              depthTest: false
+          });
+      
+          const backgroundMesh = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+          backgroundMesh.frustumCulled = false;
+          backgroundMesh.renderOrder = -1;
+      
+          const backgroundScene = new THREE.Scene();
+          const backgroundCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+          backgroundScene.add(backgroundMesh);
+      
+          return {
+              render: function(renderer) {
+                  uniforms.time.value += 0.001;
+                  renderer.autoClear = false;
+                  renderer.clear();
+                  renderer.render(backgroundScene, backgroundCamera);
+              }
+          };
+      }
+
+        class Particle {
+          constructor(type, position) {
+            this.type = type;
+            this.radius = type === 'electron' ? 3 : 6;
+            this.speed = type === 'electron' ? 3.5 : 2;
+            this.charge = type === 'proton' ? 1 : type === 'electron' ? -1 : 0;
+            this.mass = type === 'electron' ? 1 : 1836;
+            this.bonds = new Set();
+            this.bondStrengths = new Map();
+            this.maxBonds = type === 'electron' ? 2 : type === 'proton' ? 2 : 3;
+            this.bondLines = new Map();
+    
+            const geometry = new THREE.IcosahedronGeometry(this.radius, 2);
+            const baseColor = new THREE.Color(particleColors[type]);
+            
+            const material = new THREE.MeshStandardMaterial({
+                color: baseColor,
+                roughness: 0.7,
+                metalness: 0.1,
+                emissive: baseColor,
+                emissiveIntensity: 0.1,
+                transparent: true,
+                opacity: 0.95
+            });
+    
+            this.mesh = new THREE.Mesh(geometry, material);
+            
+            if (position) {
+                this.mesh.position.copy(position);
+            } else {
+                this.mesh.position.set(
+                    Math.random() * WORLD_SIZE.width,
+                    Math.random() * WORLD_SIZE.height,
+                    Math.random() * WORLD_SIZE.depth
+                );
+            }
+            
+            this.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * this.speed,
+                (Math.random() - 0.5) * this.speed,
+                (Math.random() - 0.5) * this.speed
+            );
+            
+            scene.add(this.mesh);
+        }
+          update() {
+              this.applyParticleForces();
+              this.updatePosition();
+              this.handleBoundaries();
+              this.updateBonds();
+              return true;
+          }
+      
+          applyParticleForces() {
+              const totalForce = new THREE.Vector3();
+              
+              for (let other of particles) {
+                  if (other === this) continue;
+                  
+                  const toOther = other.mesh.position.clone().sub(this.mesh.position);
+                  const distance = toOther.length();
+                  
+                  if (distance > 500) continue;
+                  
+                  const force = this.calculateParticleForce(other, toOther, distance);
+                  totalForce.add(force);
+              }
+              
+              this.velocity.add(totalForce.divideScalar(this.mass));
+          }
+          
+          calculateParticleForce(other, toOther, distance) {
+              const direction = toOther.normalize();
+              const force = new THREE.Vector3();
+              
+              const coulomb = (this.charge * other.charge) / (distance * distance);
+              const nuclear = (this.type !== 'electron' && other.type !== 'electron' && distance < 50) ?
+                  2 * Math.exp(-distance / 15) : 0;
+              const repulsion = distance < (this.radius + other.radius) ? 1 : 0;
+              
+              let bondForce = 0;
+              if (this.bonds.has(other)) {
+                  const strength = this.bondStrengths.get(other) || 1;
+                  bondForce = 0.2 * strength * (1 / (distance * distance));
+              }
+              
+              const totalForce = (coulomb + nuclear - repulsion + bondForce) * 0.5;
+              force.copy(direction).multiplyScalar(totalForce);
+              
+              if (distance < 60) {
+                  this.tryBond(other);
+              } else if (distance > 120) {
+                  this.breakBond(other);
+              }
+              
+              return force;
+          }
+      
+          tryBond(other) {
+              if (this.type === other.type) return;
+              if (this.bonds.size >= this.maxBonds) return;
+              if (other.bonds.size >= other.maxBonds) return;
+              
+              if (!this.bonds.has(other)) {
+                  this.bonds.add(other);
+                  other.bonds.add(this);
+                  this.bondStrengths.set(other, 1);
+                  other.bondStrengths.set(this, 1);
+                  
+                  const bondGeometry = new THREE.BufferGeometry();
+                  const positions = new Float32Array(6);
+                  bondGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                  
+                  const bondMaterial = new THREE.LineBasicMaterial({
+                      color: 0x00FFFF,
+                      transparent: true,
+                      opacity: 0.3,
+                      blending: THREE.AdditiveBlending
+                  });
+                  
+                  const bondLine = new THREE.Line(bondGeometry, bondMaterial);
+                  bondLine.frustumCulled = false;
+                  
+                  this.bondLines.set(other, bondLine);
+                  other.bondLines.set(this, bondLine);
+               
+              }
+          }
+      
+          breakBond(other) {
+              if (this.bonds.has(other)) {
+                  this.bonds.delete(other);
+                  other.bonds.delete(this);
+                  this.bondStrengths.delete(other);
+                  other.bondStrengths.delete(this);
+                  
+                  const bondLine = this.bondLines.get(other);
+                  if (bondLine) {
+                      scene.remove(bondLine);
+                      bondLine.geometry.dispose();
+                      bondLine.material.dispose();
+                      this.bondLines.delete(other);
+                      other.bondLines.delete(this);
+                  }
+              }
+          }
+      
+          updateBonds() {
+              this.bonds.forEach(other => {
+                  const currentStrength = this.bondStrengths.get(other) || 1;
+                  const newStrength = Math.min(5, currentStrength + 0.001);
+                  this.bondStrengths.set(other, newStrength);
+                  other.bondStrengths.set(this, newStrength);
+                  
+                  const bondLine = this.bondLines.get(other);
+                  if (bondLine) {
+                      const positions = bondLine.geometry.attributes.position.array;
+                      positions[0] = this.mesh.position.x;
+                      positions[1] = this.mesh.position.y;
+                      positions[2] = this.mesh.position.z;
+                      positions[3] = other.mesh.position.x;
+                      positions[4] = other.mesh.position.y;
+                      positions[5] = other.mesh.position.z;
+                      bondLine.geometry.attributes.position.needsUpdate = true;
+                      bondLine.material.opacity = Math.min(0.3, newStrength * 0.06);
+                  }
+              });
+          }
+      
+          updatePosition() {
+              if (this.bonds.size > 0) {
+                  const center = new THREE.Vector3();
+                  let totalStrength = 0;
+                  
+                  this.bonds.forEach(bonded => {
+                      const strength = this.bondStrengths.get(bonded) || 1;
+                      center.add(bonded.mesh.position.clone().multiplyScalar(strength));
+                      totalStrength += strength;
+                  });
+                  
+                  center.divideScalar(totalStrength);
+                  
+                  const pullStrength = 0.1 * Math.min(1, totalStrength / (this.bonds.size * 2));
+                  this.mesh.position.lerp(center, pullStrength);
+              }
+              
+              this.mesh.position.add(this.velocity);
+              this.velocity.multiplyScalar(0.99);
+          }
+      
+          handleBoundaries() {
+              const elasticity = 0.9;
+              const pos = this.mesh.position;
+              const radius = this.radius;
+              
+              if (pos.x < radius) {
+                  pos.x = radius;
+                  this.velocity.x *= -elasticity;
+              } else if (pos.x > WORLD_SIZE.width - radius) {
+                  pos.x = WORLD_SIZE.width - radius;
+                  this.velocity.x *= -elasticity;
+              }
+              
+              if (pos.y < radius) {
+                  pos.y = radius;
+                  this.velocity.y *= -elasticity;
+              } else if (pos.y > WORLD_SIZE.height - radius) {
+                  pos.y = WORLD_SIZE.height - radius;
+                  this.velocity.y *= -elasticity;
+              }
+              
+              if (pos.z < radius) {
+                  pos.z = radius;
+                  this.velocity.z *= -elasticity;
+              } else if (pos.z > WORLD_SIZE.depth - radius) {
+                  pos.z = WORLD_SIZE.depth - radius;
+                  this.velocity.z *= -elasticity;
+              }
+          }
+      
+          dispose() {
+              this.bonds.forEach(other => this.breakBond(other));
+              if (this.mesh) {
+                  scene.remove(this.mesh);
+                  this.mesh.geometry.dispose();
+                  this.mesh.material.dispose();
+              }
+          }
+      }        
+        
+        function getWorldPosition(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            const vector = new THREE.Vector3(x, y, 0.5);
+            vector.unproject(camera);
+            
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.z / dir.z;
+            
+            return camera.position.clone().add(dir.multiplyScalar(distance));
+        }
+        
+        function showOverlayInfo() {
+            const overlay = document.querySelector('.overlay-info');
+            overlay.classList.add('visible');
+            setTimeout(() => overlay.classList.remove('visible'), 3000);
+        }
+        
+        function initControls() {
+            ['proton', 'neutron', 'electron'].forEach(type => {
+                document.getElementById(`add${type.charAt(0).toUpperCase() + type.slice(1)}`).addEventListener('click', () => {
+                    const center = new THREE.Vector3(
+                        WORLD_SIZE.width/2,
+                        WORLD_SIZE.height/2,
+                        WORLD_SIZE.depth/2
+                    );
+                    
+                    for (let i = 0; i < 10; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * 100;
+                        const height = (Math.random() - 0.5) * 100;
+                        
+                        const position = new THREE.Vector3(
+                            center.x + Math.cos(angle) * radius,
+                            center.y + height,
+                            center.z + Math.sin(angle) * radius
+                        );
+                        
+                        particles.push(new Particle(type, position));
+                    }
+                });
+            });
+            
+            document.getElementById('toggleAnimation').addEventListener('click', e => {
+                isAnimating = !isAnimating;
+                const svg = e.currentTarget.querySelector('svg');
+                if (isAnimating) {
+                    svg.innerHTML = '<path d="M520-200h80v-560h-80v560Zm-160 0h80v-560h-80v560Z"/>';
+                } else {
+                    svg.innerHTML = '<path d="M320-200v-560l440 280-440 280Z"/>';
+                }
+            });
+            
+            document.getElementById('clearCanvas').addEventListener('click', () => {
+                particles.forEach(particle => particle.dispose());
+                particles.length = 0;
+            });
+            
+            renderer.domElement.addEventListener('dblclick', e => {
+                const position = getWorldPosition(e);
+                const type = e.shiftKey ? 'electron' : 'proton';
+                particles.push(new Particle(type, position));
+            });
+            
+            window.addEventListener('resize', () => {
+                const container = document.querySelector('.viewport-container');
+                camera.aspect = container.offsetWidth / container.offsetHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.offsetWidth, container.offsetHeight);
+            });
+            
+            controls.addEventListener('change', () => {
+                for (const particle of particles) {
+                    particle.mesh.quaternion.copy(camera.quaternion);
+                }
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            background.render(renderer);
+            if (isAnimating) {
+                particles.forEach(particle => particle.update());
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        initRenderer();
+        initControls();
+        showOverlayInfo();
+        
+        for (let type of ['proton', 'neutron', 'electron']) {
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle(type));
+            }
+        }
+        
+        animate();
+      </script>
+</body>
+</html>

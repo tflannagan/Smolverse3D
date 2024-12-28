@@ -230,6 +230,13 @@
                     </button>
                 </div>
             </div>
+            <div class="control-group">
+                <button class="action-button" id="toggleOrbit">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+                        <path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
     <div class="overlay-info">Use LMB/touch to rotate view.<br> Scroll to zoom.<br> Shift+drag/RMB to pan.</div>
@@ -247,6 +254,8 @@
         const WORLD_SIZE = { width: 1000, height: 1000, depth: 1000 };
         const particles = [];
         let isAnimating = true;
+
+        
         
         const particleColors = {
           proton: 0xb103ff,  
@@ -256,6 +265,11 @@
         
         let controls;
         
+        let isOrbiting = false;
+        let orbitAngle = 0;
+        const orbitSpeed = 0.001;
+        const orbitRadius = 200;
+
         function initRenderer() {
             const container = document.querySelector('.viewport-container');
             renderer.setSize(container.offsetWidth, container.offsetHeight);
@@ -647,6 +661,17 @@
                 particles.length = 0;
             });
             
+            document.getElementById('toggleOrbit').addEventListener('click', e => {
+                isOrbiting = !isOrbiting;
+                if (isOrbiting) {
+                    controls.enabled = false;
+                    e.currentTarget.style.backgroundColor = '#444';
+                } else {
+                    controls.enabled = true;
+                    e.currentTarget.style.backgroundColor = '#333';
+                }
+            });
+
             renderer.domElement.addEventListener('dblclick', e => {
                 const position = getWorldPosition(e);
                 const type = e.shiftKey ? 'electron' : 'proton';
@@ -667,13 +692,28 @@
             });
         }
         
+        function updateOrbitAnimation() {
+            if (!isOrbiting) return;
+
+            const distance = camera.position.distanceTo(controls.target);
+            orbitAngle += orbitSpeed;
+
+            const x = controls.target.x + Math.cos(orbitAngle) * distance;
+            const z = controls.target.z + Math.sin(orbitAngle) * distance;
+            const y = camera.position.y;
+
+            camera.position.set(x, y, z);
+            camera.lookAt(controls.target);
+            controls.update();
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             background.render(renderer);
             if (isAnimating) {
                 particles.forEach(particle => particle.update());
             }
-            
+            updateOrbitAnimation();
             controls.update();
             renderer.render(scene, camera);
         }

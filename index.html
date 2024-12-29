@@ -258,7 +258,7 @@
         const particleColors = {
           proton: 0xb103ff,  
           neutron: 0x4906ec,   
-          electron: 0x29f1f7   
+          electron: 0xd10376   
       };
         
         let controls;
@@ -266,7 +266,9 @@
         let isOrbiting = false;
         let orbitAngle = 0;
         const orbitSpeed = 0.001;
-        const orbitRadius = 100;
+        let orbitRadius = 0;
+        let orbitHeight = 0;
+        let orbitCenter = new THREE.Vector3();
 
         function initRenderer() {
             const container = document.querySelector('.viewport-container');
@@ -664,6 +666,14 @@
                 if (isOrbiting) {
                     controls.enabled = false;
                     e.currentTarget.style.backgroundColor = '#444';
+                    
+                    orbitCenter.copy(controls.target);
+                    const toCamera = camera.position.clone().sub(controls.target);
+                   
+                    orbitRadius = Math.sqrt(toCamera.x * toCamera.x + toCamera.z * toCamera.z);
+                    
+                    orbitHeight = camera.position.y;
+                    orbitAngle = Math.atan2(toCamera.z, toCamera.x);
                 } else {
                     controls.enabled = true;
                     e.currentTarget.style.backgroundColor = '#333';
@@ -692,16 +702,14 @@
         
         function updateOrbitAnimation() {
             if (!isOrbiting) return;
-
-            const distance = camera.position.distanceTo(controls.target);
+        
             orbitAngle += orbitSpeed;
-
-            const x = controls.target.x + Math.cos(orbitAngle) * distance;
-            const z = controls.target.z + Math.sin(orbitAngle) * distance;
-            const y = camera.position.y;
-
-            camera.position.set(x, y, z);
-            camera.lookAt(controls.target);
+        
+            const x = orbitCenter.x + Math.cos(orbitAngle) * orbitRadius;
+            const z = orbitCenter.z + Math.sin(orbitAngle) * orbitRadius;
+        
+            camera.position.set(x, orbitHeight, z);
+            camera.lookAt(orbitCenter);
             controls.update();
         }
 
